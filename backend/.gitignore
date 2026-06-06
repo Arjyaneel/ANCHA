@@ -1,0 +1,8 @@
+.env
+ancha.db
+
+venv/
+__pycache__/
+*.pyc
+
+.vscode/
