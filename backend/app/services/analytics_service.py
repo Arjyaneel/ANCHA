@@ -1,5 +1,5 @@
 from app.database.pattern_model import get_emotion_stats
-from app.services.context_builder import get_memories
+from Backend.app.services.ai_context_service import get_memories
 
 
 def get_dashboard_data(user_id):

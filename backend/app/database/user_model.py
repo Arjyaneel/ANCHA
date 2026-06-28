@@ -1,7 +1,14 @@
 from app.database.db import get_connection
 
 
-def create_user(username, password):
+def create_user(
+    username,
+    password_hash
+):
+    """
+    Create a new user.
+    The password should already be hashed before calling this function.
+    """
 
     conn = get_connection()
 
@@ -12,13 +19,13 @@ def create_user(username, password):
         INSERT INTO users
         (
             username,
-            password
+            password_hash
         )
         VALUES (?, ?)
         """,
         (
             username,
-            password
+            password_hash
         )
     )
 
@@ -32,6 +39,9 @@ def create_user(username, password):
 
 
 def get_user_by_username(username):
+    """
+    Retrieve a user by username.
+    """
 
     conn = get_connection()
 
@@ -53,11 +63,26 @@ def get_user_by_username(username):
     return user
 
 
-if __name__ == "__main__":
+def get_user_by_id(user_id):
+    """
+    Retrieve a user by ID.
+    """
 
-    user_id = create_user(
-        "Tanmay",
-        "123456"
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE id = ?
+        """,
+        (user_id,)
     )
 
-    print("User Created:", user_id)
+    user = cursor.fetchone()
+
+    conn.close()
+
+    return user

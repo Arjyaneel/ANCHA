@@ -3,11 +3,17 @@ from app.database.db import get_connection
 conn = get_connection()
 cursor = conn.cursor()
 
-cursor.execute("PRAGMA table_info(users)")
+cursor.execute("""
+SELECT name
+FROM sqlite_master
+WHERE type='table'
+""")
 
-columns = cursor.fetchall()
+tables = cursor.fetchall()
 
-for column in columns:
-    print(dict(column))
+print("\nTABLES IN DATABASE:\n")
+
+for table in tables:
+    print(table["name"])
 
 conn.close()

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ancha</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <button id="memoryToggle">
+
+    🧠 Memory
+
+    </button>
+
+
+    <div id="sidebarOverlay"> </div>
+    
+
+    <div class="memory-sidebar">
+
+    <div class="memory-header">
+
+        <h3>🧠 Memory</h3>
+
+    </div>
+
+    <div class="memory-stats">
+
+        <div class="stat-card">
+
+            <h2 id="streakCount">
+                0
+            </h2>
+
+            <p>
+                Day Streak
+            </p>
+
+        </div>
+
+        <div class="stat-card">
+
+            <h2 id="checkinCount">
+                0
+            </h2>
+
+            <p>
+                Check-ins
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="memory-section">
+
+        <h4>
+            Ancha Remembers
+        </h4>
+
+        <div id="memoryList">
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="chat-container">
+
+<header class="chat-header">
+
+            <div class="header-left">
+
+                <div class="ancha-avatar">
+
+                    <div class="status-ring listening"></div>
+
+                    <img
+                        src="assets/ancha-avatar.png"
+                        alt="Ancha"
+                    >
+
+                </div>
+
+                <div class="header-info">
+
+                    <h2>Ancha</h2>
+
+                    <p id="statusText">
+                        Listening...
+                    </p>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <main class="chat-feed">
+
+            <div id="result"></div>
+
+        </main>
+
+        <div class="interaction-deck">
+
+            <div class="mood-picker">
+
+                <button class="mood-chip">
+                    ⚡ Energetic
+                </button>
+
+                <button class="mood-chip">
+                    ☁️ Low
+                </button>
+
+                <button class="mood-chip">
+                    🌪️ Overwhelmed
+                </button>
+
+            </div>
+
+            <div class="input-capsule">
+
+                <textarea
+                    id="journalText"
+                    placeholder="Talk to Ancha..."
+                ></textarea>
+
+                <button id="analyzeBtn">
+                    →
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

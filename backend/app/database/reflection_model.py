@@ -1,35 +1,14 @@
 from app.database.db import get_connection
 
 
-def get_emotion_stats(user_id):
-
-    conn = get_connection()
-
-    cursor = conn.cursor()
-
-    cursor.execute(
-        """
-        SELECT emotion,
-               COUNT(*) as total
-        FROM journal_entries
-        WHERE user_id = ?
-        GROUP BY emotion
-        ORDER BY total DESC
-        """,
-        (user_id,)
-    )
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    return rows
-
-
-def pattern_exists(
+def reflection_exists(
     user_id,
-    pattern_type
+    title
 ):
+    """
+    Check whether a reflection
+    already exists.
+    """
 
     conn = get_connection()
 
@@ -38,13 +17,13 @@ def pattern_exists(
     cursor.execute(
         """
         SELECT id
-        FROM emotion_patterns
+        FROM user_reflections
         WHERE user_id = ?
-        AND pattern_type = ?
+        AND title = ?
         """,
         (
             user_id,
-            pattern_type
+            title
         )
     )
 
@@ -55,12 +34,15 @@ def pattern_exists(
     return result is not None
 
 
-def save_pattern(
+def save_reflection(
     user_id,
-    pattern_type,
-    pattern_description,
+    title,
+    reflection,
     confidence
 ):
+    """
+    Save a new reflection.
+    """
 
     conn = get_connection()
 
@@ -68,19 +50,19 @@ def save_pattern(
 
     cursor.execute(
         """
-        INSERT INTO emotion_patterns
+        INSERT INTO user_reflections
         (
             user_id,
-            pattern_type,
-            pattern_description,
+            title,
+            reflection,
             confidence
         )
         VALUES (?, ?, ?, ?)
         """,
         (
             user_id,
-            pattern_type,
-            pattern_description,
+            title,
+            reflection,
             confidence
         )
     )
@@ -90,10 +72,15 @@ def save_pattern(
     conn.close()
 
 
-def update_pattern(
+def update_reflection(
     user_id,
-    pattern_type
+    title,
+    reflection,
+    confidence
 ):
+    """
+    Update an existing reflection.
+    """
 
     conn = get_connection()
 
@@ -101,15 +88,20 @@ def update_pattern(
 
     cursor.execute(
         """
-        UPDATE emotion_patterns
-        SET occurrence_count = occurrence_count + 1,
-            last_detected = CURRENT_TIMESTAMP
+        UPDATE user_reflections
+
+        SET reflection = ?,
+            confidence = ?,
+            updated_at = CURRENT_TIMESTAMP
+
         WHERE user_id = ?
-        AND pattern_type = ?
+        AND title = ?
         """,
         (
+            reflection,
+            confidence,
             user_id,
-            pattern_type
+            title
         )
     )
 
@@ -117,7 +109,15 @@ def update_pattern(
 
     conn.close()
 
-def get_patterns(user_id):
+
+def get_reflections(
+    user_id,
+    limit=10
+):
+    """
+    Retrieve reflections
+    ordered by confidence.
+    """
 
     conn = get_connection()
 
@@ -126,11 +126,20 @@ def get_patterns(user_id):
     cursor.execute(
         """
         SELECT *
-        FROM emotion_patterns
+
+        FROM user_reflections
+
         WHERE user_id = ?
-        ORDER BY occurrence_count DESC
+
+        ORDER BY confidence DESC,
+                 updated_at DESC
+
+        LIMIT ?
         """,
-        (user_id,)
+        (
+            user_id,
+            limit
+        )
     )
 
     rows = cursor.fetchall()

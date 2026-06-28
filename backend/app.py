@@ -1,21 +1,36 @@
-from flask import Flask, request, jsonify
+
+from time import time
+
+from app.services.conversation_service import (
+    process_message
+)
+
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    request,
+    stream_with_context,
+)
 from flask_cors import CORS
 
-from app.ai.gemini_service import analyze_emotion
-from app.ai.memory_extractor import extract_memory
 
-from app.database.models import save_entry
-from app.database.memory_model import save_memory
-
+from werkzeug.security import (
+    generate_password_hash,
+    check_password_hash
+)
 from app.database.user_model import (
     create_user,
     get_user_by_username
 )
-
-from app.services.context_builder import build_user_context
+from app.ai.gemini_service import (
+    stream_ancha_response
+)
+from app.services.ai_context_service import build_user_context
 from app.services.dashboard_service import get_dashboard_data
-
-print("APP FILE LOADED")
+from app.database.memory_model import (
+    get_top_memories
+)
 
 app = Flask(__name__)
 CORS(app)
@@ -37,6 +52,74 @@ def health():
 
 
 
+@app.route("/analyze-stream", methods=["POST"])
+def analyze_stream():
+
+    start = time()
+
+    data = request.get_json()
+
+    text = data.get("text", "")
+    user_id = data.get("user_id")
+
+    context = build_user_context(user_id)
+
+    print(
+        "CONTEXT BUILD TIME:",
+        round(time() - start, 2),
+        "seconds"
+    )
+
+    def generate():
+
+        stream_start = time()
+
+        first_chunk = True
+
+        for chunk in stream_ancha_response(
+            text,
+            context
+        ):
+
+            if first_chunk:
+
+                print(
+                    "FIRST TOKEN TIME:",
+                    round(
+                        time() - stream_start,
+                        2
+                    ),
+                    "seconds"
+                )
+
+                first_chunk = False
+
+            yield chunk
+
+    return Response(
+        stream_with_context(
+            generate()
+        ),
+        mimetype="text/plain"
+    )
+
+@app.route("/memory-data")
+def memory_data():
+
+    user_id = request.args.get(
+        "user_id"
+    )
+
+    memories = get_top_memories(
+        user_id,
+        5
+    )
+
+    return jsonify({
+
+        "memories": memories
+
+    })
 
 @app.route("/register", methods=["POST"])
 def register():
@@ -56,11 +139,12 @@ def register():
                 "error": "Username already exists"
             }), 400
 
+        password_hash = generate_password_hash(password)
+
         user_id = create_user(
             username,
-            password
+            password_hash
         )
-
         return jsonify({
             "message": "User registered successfully",
             "user_id": user_id
@@ -95,7 +179,10 @@ def login():
                 "error": "User not found"
             }), 404
 
-        if user["password"] != password:
+        if not check_password_hash(
+            user["password_hash"],
+            password
+        ):
 
             return jsonify({
                 "error": "Invalid password"
@@ -135,9 +222,8 @@ def analyze():
 
         data = request.get_json()
 
-        text = data.get("text", "")
-
         user_id = data.get("user_id")
+        text = data.get("text", "")
 
         if not user_id:
 
@@ -145,52 +231,10 @@ def analyze():
                 "error": "User not logged in"
             }), 401
 
-        print("USER ID:", user_id)
-
-        context = build_user_context(user_id)
-
-        print("\nCONTEXT SENT TO GEMINI:\n")
-        print(context)
-
-        ai_response = analyze_emotion(
-            text,
-            context
-        )
-
-        print("AI RESPONSE:", ai_response)
-
-        
-
-        memory = extract_memory(text)
-
-        print("MEMORY EXTRACTED:", memory)
-
-        if memory["should_save"]:
-
-            save_memory(
-                user_id,
-                memory["memory_type"],
-                memory["memory_content"],
-                memory["importance_score"]
-            )
-
-            print("NEW MEMORY SAVED")
-
-        print("MEMORY SAVED")
-
-       
-
-        save_entry(
+        ai_response = process_message(
             user_id,
-            text,
-            ai_response["emotion"],
-            ai_response["energy_level"],
-            ai_response["mood_summary"],
-            ai_response["support_response"],
-            str(ai_response["tips"])
+            text
         )
-
-        print("INSERT SUCCESSFUL")
 
         return jsonify(ai_response)
 
@@ -202,11 +246,10 @@ def analyze():
             "error": "Something went wrong while analyzing the message."
         }), 500
 
-
-
 if __name__ == "__main__":
 
     app.run(
         port=5000,
         debug=True
     )
+

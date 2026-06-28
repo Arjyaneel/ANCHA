@@ -1,10 +1,29 @@
 from app.database.db import get_connection
 
 
+def normalize_memory(text):
+    """
+    Normalize memory text before storing/searching.
+    """
+
+    return (
+        text
+        .strip()
+        .lower()
+        .rstrip(".!?")
+    )
+
+
 def memory_exists(user_id, memory_content):
+    """
+    Check whether a memory already exists.
+    """
+
+    memory_content = normalize_memory(
+        memory_content
+    )
 
     conn = get_connection()
-
     cursor = conn.cursor()
 
     cursor.execute(
@@ -12,9 +31,12 @@ def memory_exists(user_id, memory_content):
         SELECT id
         FROM user_memories
         WHERE user_id = ?
-        AND memory_content = ?
+        AND LOWER(memory_content) = ?
         """,
-        (user_id, memory_content)
+        (
+            user_id,
+            memory_content
+        )
     )
 
     result = cursor.fetchone()
@@ -30,15 +52,15 @@ def save_memory(
     memory_content,
     importance_score
 ):
+    """
+    Save a new memory.
+    """
 
-    if memory_exists(user_id, memory_content):
-
-        print("MEMORY ALREADY EXISTS")
-
-        return
+    memory_content = normalize_memory(
+        memory_content
+    )
 
     conn = get_connection()
-
     cursor = conn.cursor()
 
     cursor.execute(
@@ -64,9 +86,11 @@ def save_memory(
 
     conn.close()
 
-    print("NEW MEMORY SAVED")
 
 def get_memories(user_id):
+    """
+    Return all memories ordered by importance.
+    """
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -86,3 +110,37 @@ def get_memories(user_id):
     conn.close()
 
     return rows
+
+
+def get_top_memories(
+    user_id,
+    limit=5
+):
+    """
+    Return the most important memories.
+    """
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            memory_content,
+            importance_score
+        FROM user_memories
+        WHERE user_id = ?
+        ORDER BY importance_score DESC
+        LIMIT ?
+        """,
+        (
+            user_id,
+            limit
+        )
+    )
+
+    memories = cursor.fetchall()
+
+    conn.close()
+
+    return memories
