@@ -86,6 +86,7 @@ def register():
         email,
         password_hash
     )
+    session["user_id"] = user_id
 
     return jsonify({
         "message": "User registered successfully",
@@ -103,19 +104,19 @@ def login():
 
     data = request.get_json()
 
-    username = data.get("username", "").strip()
+    email = data.get("email", "").strip().lower()
     password = data.get("password", "")
 
-    if not username or not password:
+    if not email or not password:
         return jsonify({
-            "error": "Username and password are required"
-        }), 400
+            "error": "Email and password are required"
+    }), 400
 
-    user = get_user_by_username(username)
+    user = get_user_by_email(email)
 
     if not user:
         return jsonify({
-            "error": "Invalid username or password"
+            "error": "Invalid email or password"
         }), 401
 
     if not check_password_hash(
@@ -123,7 +124,7 @@ def login():
         password
     ):
         return jsonify({
-            "error": "Invalid username or password"
+            "error": "Invalid email or password"
         }), 401
     
     session["user_id"] = user["id"]
