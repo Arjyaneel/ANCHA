@@ -1,4 +1,4 @@
-from Backend.app.services.reflection_scheduler import should_reflect
+from app.services.reflection_scheduler import should_reflect
 from app.database.chat_model import (
     save_message
 )

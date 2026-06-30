@@ -3,6 +3,7 @@ from app.database.db import get_connection
 
 def create_user(
     username,
+    email,
     password_hash
 ):
     """
@@ -19,16 +20,17 @@ def create_user(
         INSERT INTO users
         (
             username,
+            email,
             password_hash
         )
-        VALUES (?, ?)
+        VALUES (?, ?, ?)
         """,
         (
             username,
+            email,
             password_hash
         )
     )
-
     conn.commit()
 
     user_id = cursor.lastrowid
@@ -36,6 +38,44 @@ def create_user(
     conn.close()
 
     return user_id
+
+
+
+def get_user_by_email(email):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    print("=" * 50)
+
+    cursor.execute("PRAGMA table_info(users)")
+    print(cursor.fetchall())
+
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    cursor.execute("PRAGMA table_info(users)")
+
+    for row in cursor.fetchall():
+        print(dict(row))
+
+    cursor.execute("SELECT * FROM users LIMIT 1")
+    row = cursor.fetchone()
+
+    if row:
+        print(dict(row))
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE email = ?
+        """,
+        (email,)
+    )
+
+    user = cursor.fetchone()
+
+    conn.close()
+
+    return user
 
 
 def get_user_by_username(username):

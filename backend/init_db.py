@@ -1,7 +1,6 @@
 import sqlite3
 
 conn = sqlite3.connect("ancha.db")
-
 cursor = conn.cursor()
 
 cursor.execute("""

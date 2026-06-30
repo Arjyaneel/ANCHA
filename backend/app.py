@@ -1,4 +1,3 @@
-
 from time import time
 
 from app.services.conversation_service import (
@@ -14,6 +13,7 @@ from flask import (
 )
 from flask_cors import CORS
 
+from flask import session
 
 from werkzeug.security import (
     generate_password_hash,
@@ -21,7 +21,9 @@ from werkzeug.security import (
 )
 from app.database.user_model import (
     create_user,
-    get_user_by_username
+    get_user_by_username,
+    get_user_by_email,
+    get_user_by_id,
 )
 from app.ai.gemini_service import (
     stream_ancha_response
@@ -33,7 +35,18 @@ from app.database.memory_model import (
 )
 
 app = Flask(__name__)
-CORS(app)
+import os
+
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+
+CORS(
+    app,
+    origins=["http://localhost:5173"],
+    supports_credentials=True,
+)
+
 
 
 
@@ -42,6 +55,87 @@ def home():
     return "Ancha Backend Running"
 
 
+@app.route("/auth/register", methods=["POST"])
+def register():
+
+    data = request.get_json()
+
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    if not username or not email or not password:
+        return jsonify({
+            "error": "All fields are required"
+        }), 400
+
+    if get_user_by_username(username):
+        return jsonify({
+            "error": "Username already exists"
+        }), 409
+
+    if get_user_by_email(email):
+        return jsonify({
+            "error": "Email already exists"
+        }), 409
+
+    password_hash = generate_password_hash(password)
+
+    user_id = create_user(
+        username,
+        email,
+        password_hash
+    )
+
+    return jsonify({
+        "message": "User registered successfully",
+        "user": {
+            "id": user_id,
+            "username": username,
+            "email": email
+        }
+    }), 201
+
+
+
+@app.route("/auth/login", methods=["POST"])
+def login():
+
+    data = request.get_json()
+
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+
+    if not username or not password:
+        return jsonify({
+            "error": "Username and password are required"
+        }), 400
+
+    user = get_user_by_username(username)
+
+    if not user:
+        return jsonify({
+            "error": "Invalid username or password"
+        }), 401
+
+    if not check_password_hash(
+        user["password_hash"],
+        password
+    ):
+        return jsonify({
+            "error": "Invalid username or password"
+        }), 401
+    
+    session["user_id"] = user["id"]
+    
+    return jsonify({
+    "message": "Login successful",
+    "user": {
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"]
+    }
+    }), 200
 
 
 @app.route("/health", methods=["GET"])
@@ -51,6 +145,38 @@ def health():
     })
 
 
+@app.route("/auth/me", methods=["GET"])
+def auth_me():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify({
+            "error": "Unauthorized"
+        }), 401
+
+    user = get_user_by_id(user_id)
+
+    if not user:
+        return jsonify({
+            "error": "User not found"
+        }), 404
+
+    return jsonify({
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"]
+    }), 200
+
+
+@app.route("/auth/logout", methods=["POST"])
+def logout():
+
+    session.clear()
+
+    return jsonify({
+        "message": "Logged out successfully"
+    }), 200
 
 @app.route("/analyze-stream", methods=["POST"])
 def analyze_stream():
@@ -120,88 +246,6 @@ def memory_data():
         "memories": memories
 
     })
-
-@app.route("/register", methods=["POST"])
-def register():
-
-    try:
-
-        data = request.get_json()
-
-        username = data.get("username")
-        password = data.get("password")
-
-        existing_user = get_user_by_username(username)
-
-        if existing_user:
-
-            return jsonify({
-                "error": "Username already exists"
-            }), 400
-
-        password_hash = generate_password_hash(password)
-
-        user_id = create_user(
-            username,
-            password_hash
-        )
-        return jsonify({
-            "message": "User registered successfully",
-            "user_id": user_id
-        })
-
-    except Exception as e:
-
-        print("REGISTER ERROR:", e)
-
-        return jsonify({
-            "error": str(e)
-        }), 500
-
-
-
-
-@app.route("/login", methods=["POST"])
-def login():
-
-    try:
-
-        data = request.get_json()
-
-        username = data.get("username")
-        password = data.get("password")
-
-        user = get_user_by_username(username)
-
-        if not user:
-
-            return jsonify({
-                "error": "User not found"
-            }), 404
-
-        if not check_password_hash(
-            user["password_hash"],
-            password
-        ):
-
-            return jsonify({
-                "error": "Invalid password"
-            }), 401
-
-        return jsonify({
-            "message": "Login successful",
-            "user_id": user["id"],
-            "username": user["username"]
-        })
-
-    except Exception as e:
-
-        print("LOGIN ERROR:", e)
-
-        return jsonify({
-            "error": str(e)
-        }), 500
-
 
 
 
